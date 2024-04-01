@@ -7,6 +7,7 @@ import { CheckOutlined, EnterOutlined } from '@ant-design/icons';
 import { Footer, Header } from "antd/es/layout/layout";
 import Card from "antd/es/card/Card";
 import banner from '/public/start_banner.png';
+import moment from 'moment';
 
 function Page() {
   const [user, setUser] = useState<UserInfoResponse | undefined>(undefined);
@@ -33,10 +34,74 @@ function Page() {
     setActiveTab(key);
   };
 
+  const moveTasktoLater = async (task) => {
+    const newDate = moment(task.date).add(1, 'day').toDate();
+
+    const updatedTaskData = JSON.stringify({
+      name: task.name,
+      description: task.description || "", // Ensure it's a string, even if empty
+      complete: false, // Make sure this is a boolean
+      date: newDate.toISOString(),
+    });
+    console.log("Updated Task Data:", updatedTaskData);
+    
+    try {
+      const response = await fetch(`/api/tasks/${task.task_id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: updatedTaskData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(`Failed to update the task: ${errorData.error}`);
+      }
+
+      await fetchTasks();
+    } catch (error) {
+      console.error('Error updating task:', error);
+    }
+  };
+
+  const moveTasktoToday = async (task) => {
+    // Set the task date to today's date
+    const todayDate = moment().toDate();
+
+    // Prepare the data for the PUT request
+    const updatedTaskData = JSON.stringify({
+      name: task.name,
+      description: task.description || "", // Ensure it's a string, even if empty
+      complete: false, // Make sure this is a boolean
+      date: todayDate.toISOString(),
+    });
+    console.log("Updated Task Data:", updatedTaskData);
+    
+    try {
+      const response = await fetch(`/api/tasks/${task.task_id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: updatedTaskData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(`Failed to update the task: ${errorData.error}`);
+      }
+
+      await fetchTasks();
+    } catch (error) {
+      console.error('Error updating task:', error);
+    }
+  };
+
   const renderTaskCard = () => {
     if (activeTab === '1') {
-      const todayTasks = tasks.filter(task => task.priority === 1);
-
+      const todayTasks = tasks.filter(task => moment(task.date).isSame(moment(), 'day'));
+      
       // pagination stuff
       const pageSize = 1;
       const startIndex = (currentPage - 1) * pageSize;
@@ -51,11 +116,12 @@ function Page() {
       if (todayTasks.length > 0) {
         return (
           <div>
-            <Box style={{ boxShadow: '0px 0px 12px rgba(0, 0, 0, 0.25)', backgroundColor: '#434343', padding: '32px', border: '3px solid #0788FF', borderRadius: '20px', width: '296px', height: '432px', display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '12px'}}>
+            <Box style={{ boxShadow: '0px 0px 12px rgba(0, 0, 0, 0.25)', backgroundColor: '#434343', padding: '32px', border: '3px solid #0788FF', borderRadius: '20px', width: '296px', height: '432px', display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '12px', position: 'relative',}}>
               {tasksForPage.map((task, index) => (
-                <Card key={index} style={{ backgroundColor: '#434343', borderColor: '#434343', borderRadius: '20px', width: '256px', height: 'auto', display: 'inline-block', flexDirection: 'column', alignItems: 'center', marginBottom: '12px', marginRight: '12px',}}>
+                <Card key={task.task_id} style={{ backgroundColor: '#434343', borderColor: '#434343', borderRadius: '20px', width: '286px', height: '426px', position: 'absolute', top: 0, left: 0, display: 'inline-block', flexDirection: 'column', alignItems: 'center'}}>
+                  <Button type="primary"  onClick={() => moveTasktoLater(task)} style={{ width: '101px', height: '28px', borderRadius: '14px', fontSize: '14px', color: '#434343', background: '#B1DFFF', display: 'flex', justifyContent: 'center', alignItems: 'center', fontFamily: 'Poppins', marginLeft: '139px' }} icon={<EnterOutlined style={{color: '#262626'}}/>}>Later</Button>
                   <Text style={{ fontFamily: 'Poppins', fontSize: '32px', whiteSpace: 'nowrap', margin: '35px 0', color: '#FFF', textAlign: 'center' }}>{task.name}</Text>
-                  <Button type="primary" style={{ width: '224px', height: '40px', padding: '10px 76px', color: '#000', borderRadius: '14px', fontSize: '20px', background: '#B1DFFF', display: 'flex', justifyContent: 'center', alignItems: 'center', marginTop: '200px', marginBottom: '12px'}}>Complete</Button>
+                  <Button type="primary" style={{ width: '224px', height: '40px', padding: '10px 76px', color: '#000', borderRadius: '14px', fontWeight: 'bold', fontSize: '14px', background: '#B1DFFF', display: 'flex', justifyContent: 'center', alignItems: 'center', marginTop: '200px', marginBottom: '12px', fontFamily: 'Poppins'}}>Complete</Button>
                 </Card>
               ))}
             </Box>
@@ -69,7 +135,7 @@ function Page() {
               />
             </div>
             <div style={{ alignItems: 'center' }}>
-              <Progress percent={50} size={[300, 20]} />
+              <Progress percent={50} size={[300, 20]} showInfo={false} />
             </div>
           </div>
         );
@@ -81,23 +147,24 @@ function Page() {
               <Text>Create a task</Text>
             </Card>
             <div style = {{alignItems: 'center', marginBottom: '4px'}}>
-              <Pagination simple defaultCurrent={2} total={50} />
+              <Pagination simple defaultCurrent={1} total={1} />
             </div>
             <div style = {{alignItems: 'center'}}>
-              <Progress percent={50} size={[300, 20]} />
+              <Progress percent={50} size={[300, 20]} showInfo={false} />
             </div>
           </div>
         );
       }
     } else if (activeTab === '2') {
-      const laterTasks = tasks.filter(task => task.priority === 2);
+      const laterTasks = tasks.filter(task => !moment(task.date).isSame(moment(), 'day'));
+      // const laterTasks = tasks.filter(task => task.priority === 2);
       return (
         <Box bg="#262626" p="32px" borderRadius="14px" width="296px" height='521px' display='flex' flexDir='column' alignItems='center' overflowY='auto' whiteSpace='nowrap'>
           {laterTasks.map((task, index) => (
-            <Card key={index} style={{ backgroundColor: 'rgba(255, 255, 255, 0.60)', borderColor: '#262626', borderRadius: '20px', width: '256px', height: 'auto', display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px'}}>
+            <Card key={task.task_id} style={{ backgroundColor: 'rgba(255, 255, 255, 0.60)', borderColor: '#262626', borderRadius: '20px', width: '256px', height: 'auto', display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px'}}>
               <div style={{ display: 'flex', alignItems: 'center' }}>
-                <Button type="primary" style={{ width: '28px', height: '28px', borderRadius: '6px', fontSize: '20px', marginRight: '8px', background: '#B1DFFF', display: 'flex', justifyContent: 'center', alignItems: 'center' }} icon={<CheckOutlined style={{color: '#262626'}}/>}></Button>
-                <Button type="primary" style={{ width: '28px', height: '28px', borderRadius: '6px', fontSize: '20px', background: '#B1DFFF', display: 'flex', justifyContent: 'center', alignItems: 'center' }} icon={<EnterOutlined style={{color: '#262626'}}/>}></Button>
+                <Button type="primary" style={{ width: '28px', height: '28px', borderRadius: '6px', fontSize: '20px', marginRight: '8px', background: '#0788FF', display: 'flex', justifyContent: 'center', alignItems: 'center' }} icon={<CheckOutlined style={{color: '#262626'}}/>}></Button>
+                <Button type="primary"  onClick={() => moveTasktoToday(task)} style={{ width: '28px', height: '28px', borderRadius: '6px', fontSize: '20px', background: '#B1DFFF', display: 'flex', justifyContent: 'center', alignItems: 'center' }} icon={<EnterOutlined style={{color: '#262626'}}/>}></Button>
                 <div style={{ marginLeft: '12px', display: 'flex', flexDirection: 'column' }}>
                   <Text style={{ fontFamily: 'Poppins', fontSize: '12px', paddingRight: '92px', whiteSpace: 'nowrap'}}>{task.name}</Text>
                   <hr style={{ width: '120px', marginTop: '4px', borderColor: '#FFF', paddingLeft: '92px', paddingRight: '16px'}} />
@@ -127,7 +194,7 @@ function Page() {
   ];
   
 
-  return <div style={{ backgroundColor: '#FFF' }}>
+  return <div style={{ backgroundColor: '#FFF', fontFamily: 'Poppins'}}>
         <Header style={{ display: 'flex', alignItems: 'center' , borderRadius: '0px 0px 20px 20px', height: '176px', backgroundColor: '#D9D9D9'}}>
             <div>
                 <Text style = {{fontSize: '20px', marginTop: '88px', marginBottom: '7.56px', color: 'black', fontWeight: 'bold'}}>Hello,</Text>
