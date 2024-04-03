@@ -16,3 +16,9 @@
 # March 13, 2024
 
 - Added an endpoint to update tasks since this might be useful for things like imported tasks
+
+# April 3, 2024
+
+- Fixed main routing for app
+- Matched 90% of Hi-Fi designs for basic functionality
+- Connected frontend & backend for all core functionality
