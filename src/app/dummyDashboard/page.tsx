@@ -113,6 +113,7 @@ function Page() {
     const taskDetails = {
       name: formData.get('name'),
       date: moment().toDate().toISOString(),
+      description: "Manually Added Task",
     };
     const body = JSON.stringify(taskDetails);
     console.log('Created task:', taskDetails);
