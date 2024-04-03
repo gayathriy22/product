@@ -1,3 +1,5 @@
+# “Opus is a web/mobile platform that transforms boring to-do-lists into gamified daily flashcards”
+
 This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
 
 ## Getting Started
