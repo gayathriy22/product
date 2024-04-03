@@ -1,8 +1,8 @@
 'use client';
 import { UserInfoResponse } from "@/lib/google-oauth2";
-import { useEffect, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { Box, Text, Link } from '@chakra-ui/react';
-import { Progress, Button, Pagination, TabsProps, Tabs } from 'antd';
+import { Progress, Button, Pagination, TabsProps, Tabs, Drawer, Space, Input } from 'antd';
 import { CheckOutlined, EnterOutlined } from '@ant-design/icons';
 import { Footer, Header } from "antd/es/layout/layout";
 import Card from "antd/es/card/Card";
@@ -11,10 +11,14 @@ import moment from 'moment';
 
 function Page() {
   const [user, setUser] = useState<UserInfoResponse | undefined>(undefined);
-  const [taskJSON, setTaskJSON] = useState('<no response yet>');
   const [activeTab, setActiveTab] = useState<string>('1');
   const [tasks, setTasks] = useState<any[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
+  const [open, setOpen] = useState(false);
+
+  const onClose = () => {
+    setOpen(false);
+  };
 
   useEffect(() => {
     fetch(`/api/me`).then(x => x.json()).then(setUser)
@@ -34,13 +38,18 @@ function Page() {
     setActiveTab(key);
   };
 
+  const handleAddTaskAction = () => {
+    setOpen(true);
+  };
+
   const moveTasktoLater = async (task) => {
+    // Set the task date to tomorrow (aka later)
     const newDate = moment(task.date).add(1, 'day').toDate();
 
     const updatedTaskData = JSON.stringify({
       name: task.name,
-      description: task.description || "", // Ensure it's a string, even if empty
-      complete: false, // Make sure this is a boolean
+      description: task.description || "",
+      complete: false,
       date: newDate.toISOString(),
     });
     console.log("Updated Task Data:", updatedTaskData);
@@ -69,11 +78,10 @@ function Page() {
     // Set the task date to today's date
     const todayDate = moment().toDate();
 
-    // Prepare the data for the PUT request
     const updatedTaskData = JSON.stringify({
       name: task.name,
-      description: task.description || "", // Ensure it's a string, even if empty
-      complete: false, // Make sure this is a boolean
+      description: task.description || "",
+      complete: false,
       date: todayDate.toISOString(),
     });
     console.log("Updated Task Data:", updatedTaskData);
@@ -98,10 +106,40 @@ function Page() {
     }
   };
 
+  const handleSubmit = async (event: FormEvent) => {
+    event.preventDefault();
+    const form = event.target as HTMLFormElement;
+    const formData = new FormData(form);
+    const taskDetails = {
+      name: formData.get('name'),
+      date: moment().toDate().toISOString(),
+    };
+    const body = JSON.stringify(taskDetails);
+    console.log('Created task:', taskDetails);
+
+    try {
+      const response = await fetch('/api/tasks', { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' },
+        body 
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to create task');
+      }
+      setOpen(false);
+      setTasks([...tasks, taskDetails]);
+      await fetchTasks();
+    } catch (error) {
+      console.error('Error creating task:', error);
+    }
+  };
+
+
   const renderTaskCard = () => {
     if (activeTab === '1') {
       const todayTasks = tasks.filter(task => moment(task.date).isSame(moment(), 'day'));
-      
+
       // pagination stuff
       const pageSize = 1;
       const startIndex = (currentPage - 1) * pageSize;
@@ -215,9 +253,18 @@ function Page() {
             
         </div>
         <Footer style={{ textAlign: 'center', backgroundColor: '#434343', marginTop: '-260px'}}>
-            <Link href="#">
-                <Button type="primary" style={{ textAlign: 'center', width: '104px', height: '40px', borderRadius: '20px', fontSize: '20px'}}>+</Button>
-            </Link>
+            <Button type="primary" onClick={() => handleAddTaskAction()} style={{ textAlign: 'center', width: '104px', height: '40px', borderRadius: '20px', fontSize: '20px'}}>+</Button>
+            <Drawer
+              placement="bottom"
+              onClose={onClose}
+              open={open}
+            >
+              {/* <Box style={{ backgroundColor: "#262626", padding: "32px", borderRadius: "14px", width: "104px", height: '8px' }}></Box> */}
+              <form onSubmit={handleSubmit} style={{ padding: '20px' }}>
+                <Input name="name" placeholder="Enter task name" style={{ marginBottom: '16px' }} />
+                <Button type="primary" htmlType="submit" block>+</Button>
+              </form>
+            </Drawer>
         </Footer>
   </div>
 }
